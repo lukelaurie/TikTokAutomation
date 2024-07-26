@@ -1,2 +1,4 @@
+github.com/Microsoft/cognitive-services-speech-sdk-go v1.33.0 h1:xPYSgs3nGr5J9ucPfzItDTj2jpQkz5OUPZM4z//8xUg=
+github.com/Microsoft/cognitive-services-speech-sdk-go v1.33.0/go.mod h1:ct4bG95K1Lu/c5y60PVGI1XOjo9aAcl80DD5dvu6zsg=
 github.com/gorilla/mux v1.8.1 h1:TuBL49tXwgrFYWhqrNgrUNEY92u81SPhu7sTdzQEiWY=
 github.com/gorilla/mux v1.8.1/go.mod h1:AKf9I4AEqPTmMytcMc0KkNouC66V3BtZ4qD5fmWSiMQ=
