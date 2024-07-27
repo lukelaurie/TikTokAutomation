@@ -7,8 +7,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	model "github.com/lukelaurie/TikTokAutomation/backend/internal/model"
-
 )
 
 func TimeStampGenerator(audioPath string) (float64, *[]model.TextDisplay, error) {
@@ -60,8 +60,11 @@ func TimeStampGenerator(audioPath string) (float64, *[]model.TextDisplay, error)
 	return videoLength, allText, nil
 }
 
+func convertNano(time int) float64 {
+	return float64(time) / 10000000
+}
 func processTranscriptResponse(transcriptResponse *model.TranscriptResponse) (float64, *[]model.TextDisplay) {
-	videoLength := float64(transcriptResponse.Duration) / 10000000 // Convert nanoseconds to seconds
+	videoLength := convertNano(transcriptResponse.Duration)
 	// extract all words and their time stamps 
 	var allText []model.TextDisplay
 	allWords := transcriptResponse.NBest[0].Words
@@ -69,16 +72,21 @@ func processTranscriptResponse(transcriptResponse *model.TranscriptResponse) (fl
 		wordItem := allWords[i]
 		// parse the text and start/end times
 		curWord := wordItem.Word
-		startTime := float64(wordItem.Offset) / 10000000
-		duration := float64(wordItem.Duration) / 10000000
+		startTime := convertNano(wordItem.Offset)
+		duration := convertNano(wordItem.Duration)
 		endTime := startTime + duration
 		// check if need to show 1 or 2 words
 		if len(curWord) < 5 && i < len(allWords) - 1 {
 			curWord += " " + allWords[i + 1].Word
-			newDuration := float64(allWords[i + 1].Duration) / 10000000
+			newDuration := convertNano(allWords[i + 1].Duration)
 			endTime += newDuration
 			i++;
 		}
+		// ` causes string to be invalid 
+		curWord = strings.ReplaceAll(curWord, "'", "\\")
+		// have word come up a little before spoken 
+		startTime -= 0.25
+		endTime -= 0.25
 		allText = append(allText, model.TextDisplay{
 			Text: curWord, 
 			StartTime: fmt.Sprintf("%.1f", startTime), 

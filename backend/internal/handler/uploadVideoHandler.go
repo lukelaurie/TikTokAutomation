@@ -1,10 +1,12 @@
-package uploadVideoHandler
+package handler
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
+
 	// "regexp"
 	"strings"
 
@@ -21,7 +23,7 @@ func UploadVideo(w http.ResponseWriter, r *http.Request) {
 	// retrieve the data from the needed scheduler
 	videoType, videoPath, fontName, fontColor := database.RetrieveSchedulerInfo(5)
 	videoText := api.GenerateVideoScript(videoType)
-
+	videoText += ""
 	audioError := api.GenerateAudioFile(videoText)
 	if audioError != nil {
 		panic(audioError)
@@ -30,18 +32,16 @@ func UploadVideo(w http.ResponseWriter, r *http.Request) {
 
 	videoLength, allText, timeStampError := api.TimeStampGenerator(audioPath)
 
-	fmt.Printf("%f     %s", videoLength, (*allText)[0].Text)
-
 	if timeStampError != nil {
 		panic(timeStampError)
 	}
 
-	generateTikTokVideo(videoText, audioPath, videoPath, fontName, fontColor, videoLength, allText)
+	generateTikTokVideo(audioPath, videoPath, fontName, fontColor, videoLength, allText)
 
-	json.NewEncoder(w).Encode("yooooooo")
+	json.NewEncoder(w).Encode("video created")
 }
 
-func generateTikTokVideo(videoText string, audioPath string, videoPath string, fontName string, fontColor string, videoLength float64, allText *[]model.TextDisplay) {
+func generateTikTokVideo(audioPath string, videoPath string, fontName string, fontColor string, videoLength float64, allText *[]model.TextDisplay) {
 	// specify the path for the output file
 	outputPath := "./assets/video/output.mp4"
 	cutPath := "./assets/video/cut.mp4"
@@ -60,27 +60,17 @@ func generateTikTokVideo(videoText string, audioPath string, videoPath string, f
 	}
 
 	// add the text from the api onto the video
-	overlayErr := overlayTextOnVideo(videoText, fontName, fontColor, combinedPath, outputPath, allText)
+	overlayErr := overlayTextOnVideo(fontName, fontColor, combinedPath, outputPath, allText)
 	if overlayErr != nil {
 		panic(overlayErr)
+	}
+	removeFileErr := deleteFile(cutPath, combinedPath)
+	if removeFileErr != nil {
+		panic(removeFileErr)
 	}
 }
 
 func cutVideoLength(videoPath string, cutPath string, videoLength float64) error {
-	// cmdGetDuration := exec.Command("ffmpeg.exe", "-i", audioPath, "-f", "null", "-")
-	// durationOutput, err := cmdGetDuration.CombinedOutput()
-	// if err != nil {
-	// 	return fmt.Errorf("FFmpeg error: %v\nOutput: %s", err, durationOutput)
-	// }
-
-	// // Extract the duration from the output
-	// re := regexp.MustCompile(`Duration: (\d+:\d+:\d+\.\d+)`)
-	// match := re.FindStringSubmatch(string(durationOutput))
-	// if len(match) < 2 {
-	// 	return fmt.Errorf("failed to parse audio from mp3 output")
-	// }
-	// duration := match[1]
-
 	// cut down the length of the video
 	strVideoLength := fmt.Sprintf("%f", videoLength)
 	cmdCutVideo := exec.Command("ffmpeg.exe", "-i", videoPath, "-t", strVideoLength, "-c", "copy", "-y", cutPath)
@@ -104,7 +94,7 @@ func combineAudioAndVideo(audioPath string, videoPath string, outputPath string)
 	return nil
 }
 
-func overlayTextOnVideo(videoText string, fontName string, fontColor string, combinedPath string, outputPath string, allText *[]model.TextDisplay) error {
+func overlayTextOnVideo(fontName string, fontColor string, combinedPath string, outputPath string, allText *[]model.TextDisplay) error {
 	// textIntervals := generateTextDisplayIntervals(videoText)
 	textIntervals := *allText
 
@@ -127,33 +117,16 @@ func overlayTextOnVideo(videoText string, fontName string, fontColor string, com
 		return fmt.Errorf("ffmpeg error: %v\nOutput: %s", err, overlayOutput)
 	}
 
+	// delete the remaining files 
+
 	return nil
 }
 
-func generateTextDisplayIntervals(videoText string) []model.TextDisplay {
-	videoText = strings.ReplaceAll(videoText, "'", "\\")
-
-	var allText []model.TextDisplay
-	allWords := strings.Split(videoText, " ")
-	var curTime float64 = 0.5
-	const timeAdd float64 = 0.6
-
-	// generate the strings to place the text on the video
-	for i := 0; i < len(allWords); i++ {
-		curWord := allWords[i]
-		// determine weather to show 1 or 2 words at a time
-		if len(curWord) < 5 && i < len(allWords) - 1 {
-			curWord += " " + allWords[i + 1]
-			i++;
-		} 
-		newTime := curTime + timeAdd
-
-		allText = append(allText, model.TextDisplay{
-			Text: curWord, 
-			StartTime: fmt.Sprintf("%.1f", curTime), 
-			EndTime: fmt.Sprintf("%.1f", newTime)})
-		curTime = newTime
+func deleteFile(cutPath string, combinedPath string) error {
+	cutErr := os.Remove(cutPath)
+	combineErr := os.Remove(combinedPath)
+	if cutErr != nil || combineErr != nil {
+		return fmt.Errorf("error removing file")
 	}
-
-	return allText
+	return nil
 }
