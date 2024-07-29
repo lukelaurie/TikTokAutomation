@@ -22,8 +22,16 @@ func UploadVideo(w http.ResponseWriter, r *http.Request) {
 
 	// retrieve the data from the needed scheduler
 	videoType, videoPath, fontName, fontColor := database.RetrieveSchedulerInfo(5)
-	videoText := api.GenerateVideoScript(videoType)
-	videoText += ""
+	// videoPath += ""
+	// fontName += ""
+	// fontColor += ""
+
+	chatInstructions := "You are a compelling story teller. Each story you generate must be unique from any other story told, and should be around 30 seconds long"
+	chatPrompt := "Tell me a sad story"
+	videoText, scriptErr := api.GenerateVideoScript(videoType, chatInstructions, chatPrompt)
+	if scriptErr != nil {
+		panic(scriptErr)
+	}
 	audioError := api.GenerateAudioFile(videoText)
 	if audioError != nil {
 		panic(audioError)
@@ -38,7 +46,7 @@ func UploadVideo(w http.ResponseWriter, r *http.Request) {
 
 	generateTikTokVideo(audioPath, videoPath, fontName, fontColor, videoLength, allText)
 
-	json.NewEncoder(w).Encode("video created")
+	json.NewEncoder(w).Encode(videoText)
 }
 
 func generateTikTokVideo(audioPath string, videoPath string, fontName string, fontColor string, videoLength float64, allText *[]model.TextDisplay) {
