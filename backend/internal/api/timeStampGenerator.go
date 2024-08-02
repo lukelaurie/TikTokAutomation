@@ -5,40 +5,57 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
-	model "github.com/lukelaurie/TikTokAutomation/backend/internal/model"
+
+	"github.com/lukelaurie/TikTokAutomation/backend/internal/model"
 )
+func TimeStampGenerator(audioPath string) (*[]model.TextDisplay, error) {
+	apiKey := os.Getenv("OPENAI_API_KEY")
 
-func TimeStampGenerator(audioPath string) (float64, *[]model.TextDisplay, error) {
-	speechKey := os.Getenv("SPEECH_KEY")
-	speechRegion := os.Getenv("SPEECH_REGION")
-
-	// endpoint := fmt.Sprintf("https://%s.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=en-US", speechRegion)
-	endpoint := fmt.Sprintf("https://%s.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=en-US&format=detailed&profanity=masked&wordLevelTimestamps=true", speechRegion)
-
-
-	audioFile, err := os.ReadFile(audioPath)
+	audioFile, err := os.Open(audioPath)
 	if err != nil {
-		return -1, nil, fmt.Errorf("error getting the audio file: %v", err)
-	}
+		return nil, fmt.Errorf("error opening the audio file: %v", err)
+	}	
+	defer audioFile.Close()
 
+	var requstBody bytes.Buffer
+	writer := multipart.NewWriter(&requstBody)
+
+	// create form in the body and add the audio file to it
+	part, err := writer.CreateFormFile("file", audioPath)
+	if err != nil {
+		return nil, fmt.Errorf("error creating the audio form: %v", err)
+	}	
+	_, err = io.Copy(part, audioFile)
+	if err != nil {
+		return nil, fmt.Errorf("error copying the audio file: %v", err)
+	}	
+
+	// write the reamaining parts of the body
+	writer.WriteField("model", "whisper-1")
+	writer.WriteField("response_format", "verbose_json")
+	writer.WriteField("timestamp_granularities[]", "word")
+
+	writer.Close()
+	
 	// generate the request
-	req, err := http.NewRequest("POST", endpoint, bytes.NewReader(audioFile))
-
+	req, err := http.NewRequest("POST", "https://api.openai.com/v1/audio/transcriptions", &requstBody)
 	if err != nil {
-		return -1, nil, fmt.Errorf("azure error making the request: %v", err)
+		return nil, fmt.Errorf("azure error making the request: %v", err)
 	}
 
-	req.Header.Set("Content-Type", "audio/wav")
-	req.Header.Set("Ocp-Apim-Subscription-Key", speechKey)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", "Bearer " + apiKey)
 
 	// execute the request
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return -1, nil, fmt.Errorf("azure error sending the request: %v", err)
+		return nil, fmt.Errorf("azure error sending the request: %v", err)
 	}
 	// close the response after function call completes
 	defer resp.Body.Close()
@@ -46,52 +63,47 @@ func TimeStampGenerator(audioPath string) (float64, *[]model.TextDisplay, error)
 	if resp.StatusCode != http.StatusOK {
 		fmt.Printf("Request failed with status: %s\n", resp.Status)
 		body, _ := io.ReadAll(resp.Body)
-		return -1, nil, fmt.Errorf("response Body: %s", body)
+		return nil, fmt.Errorf("response Body: %s", body)
 	}
 
 	// Unmarshal the response JSON into the structured data
 	var transcriptResponse model.TranscriptResponse
 	if err := json.NewDecoder(resp.Body).Decode(&transcriptResponse); err != nil {
-		return -1, nil, fmt.Errorf("error decoding azure response body: %v", err)
+		return nil, fmt.Errorf("error decoding azure response body: %v", err)
 	}
 
-	videoLength, allText := processTranscriptResponse(&transcriptResponse)
+	allText := processTranscriptResponse(&transcriptResponse)
 
-	return videoLength, allText, nil
+	return allText, nil
 }
 
-func convertNano(time int) float64 {
-	return float64(time) / 10000000
-}
-func processTranscriptResponse(transcriptResponse *model.TranscriptResponse) (float64, *[]model.TextDisplay) {
-	videoLength := convertNano(transcriptResponse.Duration)
-	// extract all words and their time stamps 
+func processTranscriptResponse(transcriptResponse *model.TranscriptResponse) *[]model.TextDisplay {
+	// extract all words and their time stamps
 	var allText []model.TextDisplay
-	allWords := transcriptResponse.NBest[0].Words
+	allWords := transcriptResponse.Words
 	for i := 0; i < len(allWords); i++ {
 		wordItem := allWords[i]
 		// parse the text and start/end times
-		curWord := wordItem.Word
-		startTime := convertNano(wordItem.Offset)
-		duration := convertNano(wordItem.Duration)
-		endTime := startTime + duration
-		// check if need to show 1 or 2 words
-		if len(curWord) < 5 && i < len(allWords) - 1 {
-			curWord += " " + allWords[i + 1].Word
-			newDuration := convertNano(allWords[i + 1].Duration)
-			endTime += newDuration
-			i++;
+		curWord, startTime, endTime := wordItem.Word, wordItem.Start, wordItem.End
+		if len(curWord) < 5 && i < len(allWords)-1 {
+			curWord += " " + allWords[i+1].Word
+			endTime = allWords[i+1].End
+			i++
 		}
-		// ` causes string to be invalid 
+		
+		// ` causes string to be invalid
 		curWord = strings.ReplaceAll(curWord, "'", "\\")
-		// have word come up a little before spoken 
+
+		// have word come up a little before spoken
 		startTime -= 0.25
 		endTime -= 0.25
-		allText = append(allText, model.TextDisplay{
-			Text: curWord, 
-			StartTime: fmt.Sprintf("%.1f", startTime), 
-			EndTime: fmt.Sprintf("%.1f", endTime)}) 
+		startTime = math.Max(0, startTime)
+		endTime = math.Max(0, endTime)
 
+		allText = append(allText, model.TextDisplay{
+			Text:      curWord,
+			StartTime: fmt.Sprintf("%.1f", startTime),
+			EndTime:   fmt.Sprintf("%.1f", endTime)})
 	}
-	return videoLength, &allText
+	return &allText
 }

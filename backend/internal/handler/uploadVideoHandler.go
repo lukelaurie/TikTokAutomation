@@ -22,12 +22,10 @@ func UploadVideo(w http.ResponseWriter, r *http.Request) {
 
 	// retrieve the data from the needed scheduler
 	videoType, videoPath, fontName, fontColor := database.RetrieveSchedulerInfo(5)
-	// videoPath += ""
-	// fontName += ""
-	// fontColor += ""
+
 
 	chatInstructions := "You are a compelling story teller. Each story you generate must be unique from any other story told, and should be around 30 seconds long"
-	chatPrompt := "Tell me a sad story"
+	chatPrompt := "Connor is a avid drug addict. Tell me a story about Connor going to the gym and tearing his bicep terribly, then dying and people laughing at him through the whole process."
 	videoText, scriptErr := api.GenerateVideoScript(videoType, chatInstructions, chatPrompt)
 	if scriptErr != nil {
 		panic(scriptErr)
@@ -38,31 +36,24 @@ func UploadVideo(w http.ResponseWriter, r *http.Request) {
 	}
 	audioPath := "./assets/audio/output.wav"
 
-	videoLength, allText, timeStampError := api.TimeStampGenerator(audioPath)
+	allText, timeStampError := api.TimeStampGenerator(audioPath)
 
 	if timeStampError != nil {
 		panic(timeStampError)
 	}
 
-	generateTikTokVideo(audioPath, videoPath, fontName, fontColor, videoLength, allText)
+	generateTikTokVideo(audioPath, videoPath, fontName, fontColor, allText)
 
-	json.NewEncoder(w).Encode(videoText)
+	json.NewEncoder(w).Encode("success")
 }
 
-func generateTikTokVideo(audioPath string, videoPath string, fontName string, fontColor string, videoLength float64, allText *[]model.TextDisplay) {
+func generateTikTokVideo(audioPath string, videoPath string, fontName string, fontColor string, allText *[]model.TextDisplay) {
 	// specify the path for the output file
 	outputPath := "./assets/video/output.mp4"
-	cutPath := "./assets/video/cut.mp4"
 	combinedPath := "./assets/video/combined.mp4"
 
-	// have video and mp3 length match each other
-	cutErr := cutVideoLength(videoPath, cutPath, videoLength)
-	if cutErr != nil {
-		panic(cutErr)
-	}
-
 	// combine the mp4 and audio files into one video
-	combineErr := combineAudioAndVideo(audioPath, cutPath, combinedPath)
+	combineErr := combineAudioAndVideo(audioPath, videoPath, combinedPath)
 	if combineErr != nil {
 		panic(combineErr)
 	}
@@ -72,26 +63,14 @@ func generateTikTokVideo(audioPath string, videoPath string, fontName string, fo
 	if overlayErr != nil {
 		panic(overlayErr)
 	}
-	removeFileErr := deleteFile(cutPath, combinedPath)
+	removeFileErr := deleteFile(combinedPath)
 	if removeFileErr != nil {
 		panic(removeFileErr)
 	}
 }
 
-func cutVideoLength(videoPath string, cutPath string, videoLength float64) error {
-	// cut down the length of the video
-	strVideoLength := fmt.Sprintf("%f", videoLength)
-	cmdCutVideo := exec.Command("ffmpeg.exe", "-i", videoPath, "-t", strVideoLength, "-c", "copy", "-y", cutPath)
-	cutOutput, err := cmdCutVideo.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("ffmpeg error: %v\nOutput: %s", err, cutOutput)
-	}
-
-	return nil
-}
-
 func combineAudioAndVideo(audioPath string, videoPath string, outputPath string) error {
-	cmd := exec.Command("ffmpeg.exe", "-i", videoPath, "-i", audioPath, "-c:v", "copy", "-c:a", "aac", "-strict", "experimental", "-y", outputPath)
+	cmd := exec.Command("ffmpeg", "-i", videoPath, "-i", audioPath, "-c:v", "copy", "-c:a", "aac", "-strict", "experimental", "-shortest", "-y", outputPath)
 
 	// Run the command and get the output
 	output, err := cmd.CombinedOutput()
@@ -111,7 +90,7 @@ func overlayTextOnVideo(fontName string, fontColor string, combinedPath string, 
 	fontFile := fmt.Sprintf("./assets/font/%s.ttf", fontName)
 
 	for _, textInterval := range textIntervals {
-		textFormat := fmt.Sprintf("drawtext=text='%s':fontfile=%s:fontsize=60:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)-700:enable='between(t,%s,%s)'",
+		textFormat := fmt.Sprintf("drawtext=text='%s':fontfile=%s:fontsize=w/7:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/3:enable='between(t,%s,%s)'",
 		textInterval.Text, fontFile, fontColor, textInterval.StartTime, textInterval.EndTime)
 
 		filters = append(filters, textFormat)
@@ -130,10 +109,9 @@ func overlayTextOnVideo(fontName string, fontColor string, combinedPath string, 
 	return nil
 }
 
-func deleteFile(cutPath string, combinedPath string) error {
-	cutErr := os.Remove(cutPath)
+func deleteFile(combinedPath string) error {
 	combineErr := os.Remove(combinedPath)
-	if cutErr != nil || combineErr != nil {
+	if combineErr != nil {
 		return fmt.Errorf("error removing file")
 	}
 	return nil
