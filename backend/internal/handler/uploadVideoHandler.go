@@ -23,9 +23,8 @@ func UploadVideo(w http.ResponseWriter, r *http.Request) {
 	// retrieve the data from the needed scheduler
 	videoType, videoPath, fontName, fontColor := database.RetrieveSchedulerInfo(5)
 
-
 	chatInstructions := "You are a compelling story teller. Each story you generate must be unique from any other story told, and should be around 30 seconds long"
-	chatPrompt := "Connor is a avid drug addict. Tell me a story about Connor going to the gym and tearing his bicep terribly, then dying and people laughing at him through the whole process."
+	chatPrompt := "Generate me a story of how Luke is hearbrocken from his high school ex who dumped him at prom. And now he hates women."
 	videoText, scriptErr := api.GenerateVideoScript(videoType, chatInstructions, chatPrompt)
 	if scriptErr != nil {
 		panic(scriptErr)
@@ -90,21 +89,21 @@ func overlayTextOnVideo(fontName string, fontColor string, combinedPath string, 
 	fontFile := fmt.Sprintf("./assets/font/%s.ttf", fontName)
 
 	for _, textInterval := range textIntervals {
-		textFormat := fmt.Sprintf("drawtext=text='%s':fontfile=%s:fontsize=w/7:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/3:enable='between(t,%s,%s)'",
-		textInterval.Text, fontFile, fontColor, textInterval.StartTime, textInterval.EndTime)
-
+		textFormat := fmt.Sprintf(
+			"drawtext=text='%s':fontfile=%s:fontsize=w/6:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/2:shadowx=2:shadowy=2:shadowcolor=black:enable='between(t,%s,%s)'",
+			textInterval.Text, fontFile, fontColor, textInterval.StartTime, textInterval.EndTime)
+	
 		filters = append(filters, textFormat)
-	}	
+	}
 
 	filteredString := strings.Join(filters, ",")
-	// fmt.Printf("%s", filteredString)
 	cmdOverlayText := exec.Command("ffmpeg.exe", "-i", combinedPath, "-vf", filteredString, "-c:a", "copy", "-y", outputPath)
 	overlayOutput, err := cmdOverlayText.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("ffmpeg error: %v\nOutput: %s", err, overlayOutput)
 	}
 
-	// delete the remaining files 
+	// delete the remaining files
 
 	return nil
 }

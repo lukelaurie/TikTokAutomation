@@ -13,13 +13,14 @@ import (
 
 	"github.com/lukelaurie/TikTokAutomation/backend/internal/model"
 )
+
 func TimeStampGenerator(audioPath string) (*[]model.TextDisplay, error) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 
 	audioFile, err := os.Open(audioPath)
 	if err != nil {
 		return nil, fmt.Errorf("error opening the audio file: %v", err)
-	}	
+	}
 	defer audioFile.Close()
 
 	var requstBody bytes.Buffer
@@ -29,11 +30,11 @@ func TimeStampGenerator(audioPath string) (*[]model.TextDisplay, error) {
 	part, err := writer.CreateFormFile("file", audioPath)
 	if err != nil {
 		return nil, fmt.Errorf("error creating the audio form: %v", err)
-	}	
+	}
 	_, err = io.Copy(part, audioFile)
 	if err != nil {
 		return nil, fmt.Errorf("error copying the audio file: %v", err)
-	}	
+	}
 
 	// write the reamaining parts of the body
 	writer.WriteField("model", "whisper-1")
@@ -41,7 +42,7 @@ func TimeStampGenerator(audioPath string) (*[]model.TextDisplay, error) {
 	writer.WriteField("timestamp_granularities[]", "word")
 
 	writer.Close()
-	
+
 	// generate the request
 	req, err := http.NewRequest("POST", "https://api.openai.com/v1/audio/transcriptions", &requstBody)
 	if err != nil {
@@ -49,7 +50,7 @@ func TimeStampGenerator(audioPath string) (*[]model.TextDisplay, error) {
 	}
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	req.Header.Set("Authorization", "Bearer " + apiKey)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
 
 	// execute the request
 	client := &http.Client{}
@@ -78,32 +79,43 @@ func TimeStampGenerator(audioPath string) (*[]model.TextDisplay, error) {
 }
 
 func processTranscriptResponse(transcriptResponse *model.TranscriptResponse) *[]model.TextDisplay {
+	// use the split text over the words because it contains grammer
+	splitText := strings.Split(transcriptResponse.Text, " ")
+
 	// extract all words and their time stamps
 	var allText []model.TextDisplay
 	allWords := transcriptResponse.Words
-	for i := 0; i < len(allWords); i++ {
-		wordItem := allWords[i]
-		// parse the text and start/end times
-		curWord, startTime, endTime := wordItem.Word, wordItem.Start, wordItem.End
-		if len(curWord) < 5 && i < len(allWords)-1 {
-			curWord += " " + allWords[i+1].Word
-			endTime = allWords[i+1].End
+	endTime := 0.0
+
+	for i := 0; i < len(allWords) && i < len(splitText); i++ {
+		// use the previous end time of prior word to account for whisper miscalculations
+		startTime := endTime
+		curWord := splitText[i]
+
+		// add new words while they fit into the screen and not end of sentence
+		for !strings.HasSuffix(curWord, ".") &&
+			i < len(allWords)-1 &&
+			(len(curWord)+len(splitText[i+1])+1) <= 11 {
+			curWord += " " + splitText[i+1]
 			i++
 		}
-		
+		endTime = allWords[i].End
+		// add to end time if end of sentence to account for the pause
+		if strings.HasSuffix(curWord, ".") {
+			endTime += .7
+		}
+
 		// ` causes string to be invalid
-		curWord = strings.ReplaceAll(curWord, "'", "\\")
+		curWord = strings.ReplaceAll(curWord, "'", "’")
 
 		// have word come up a little before spoken
-		startTime -= 0.25
-		endTime -= 0.25
-		startTime = math.Max(0, startTime)
-		endTime = math.Max(0, endTime)
+		earlyStartTime := math.Max(0, startTime-0.3)
+		earlyEndTime := math.Max(0, endTime-0.3)
 
 		allText = append(allText, model.TextDisplay{
 			Text:      curWord,
-			StartTime: fmt.Sprintf("%.1f", startTime),
-			EndTime:   fmt.Sprintf("%.1f", endTime)})
+			StartTime: fmt.Sprintf("%.2f", earlyStartTime),
+			EndTime:   fmt.Sprintf("%.2f", earlyEndTime)})
 	}
 	return &allText
 }
