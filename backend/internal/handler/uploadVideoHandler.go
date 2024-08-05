@@ -3,11 +3,10 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
-
-	// "regexp"
 	"strings"
 
 	api "github.com/lukelaurie/TikTokAutomation/backend/internal/api"
@@ -21,10 +20,14 @@ func UploadVideo(w http.ResponseWriter, r *http.Request) {
 	// TODO -> Determine which preference to use
 
 	// retrieve the data from the needed scheduler
-	videoType, videoPath, fontName, fontColor := database.RetrieveSchedulerInfo(5)
+	videoType, backgroundType, fontName, fontColor := database.RetrieveSchedulerInfo(5)
+	videoPath, videoPathErr := getRandomBackgroundFile(backgroundType)
+	if videoPathErr != nil {
+		panic(videoPathErr)
+	}
 
 	chatInstructions := "You are a compelling story teller. Each story you generate must be unique from any other story told, and should be around 30 seconds long"
-	chatPrompt := "Generate me a story of how Luke is hearbrocken from his high school ex who dumped him at prom. And now he hates women."
+	chatPrompt := "Please right me a story about zombies taking over the world and one person fighting until the very end."
 	videoText, scriptErr := api.GenerateVideoScript(videoType, chatInstructions, chatPrompt)
 	if scriptErr != nil {
 		panic(scriptErr)
@@ -44,6 +47,36 @@ func UploadVideo(w http.ResponseWriter, r *http.Request) {
 	generateTikTokVideo(audioPath, videoPath, fontName, fontColor, allText)
 
 	json.NewEncoder(w).Encode("success")
+}
+
+func getRandomBackgroundFile(backgroundType string) (string, error) {
+	directoryPath := fmt.Sprintf("./assets/video/%s/", backgroundType)
+
+	// read the directory 
+	files, err := os.ReadDir(directoryPath)
+	if err != nil {
+		return "", fmt.Errorf("error opening directoy: %v", err)
+	}
+
+	// collect all of the file names 
+	var fileNames []string 
+	for _, file := range files {
+		if file.Type().IsRegular() {
+			fileNames = append(fileNames, file.Name())
+		}
+	}
+
+	// verify files existed in the directory 
+	if len(fileNames) == 0 {
+		return "", fmt.Errorf("error: no files exist in the firectory")
+	}
+
+	// set the random seed and choose the name of the file randomly
+	// rand.Seed(time.Now().UnixNano())
+	randIndex := rand.Intn(len(fileNames))
+	fileName := fileNames[randIndex]
+
+	return directoryPath + fileName, nil
 }
 
 func generateTikTokVideo(audioPath string, videoPath string, fontName string, fontColor string, allText *[]model.TextDisplay) {
