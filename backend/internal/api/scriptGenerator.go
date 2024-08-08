@@ -5,18 +5,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 
 	"github.com/lukelaurie/TikTokAutomation/backend/internal/model"
 )
 
-func GenerateVideoScript(videoType string, chatInstructions string, chatPrompt string) (string, error) {
+func GenerateVideoScript(videoType string) (string, error) {
 	const apiUrl = "https://api.openai.com/v1/chat/completions"
 
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		return "", fmt.Errorf("error: please provide the enironment variable \"OPENAI_API_KEY\"")
+	}
+
+	chatInstructions, chatPrompt, err := retrieveChatInstructions(videoType)
+	if err != nil {
+		return "", err
 	}
 
 	// provide instructions on how the gpt model should respond
@@ -69,4 +75,32 @@ func GenerateVideoScript(videoType string, chatInstructions string, chatPrompt s
 		return "", fmt.Errorf("no response from chatGPT")
 	}
 	return chatResponse.Choices[0].Message.Content, nil
+}
+
+func retrieveChatInstructions(videoType string) (string, string, error) {
+	file, err := os.ReadFile("./internal/model/prompts.json")
+	if err != nil {
+		return "", "", fmt.Errorf("error getting the chatGPT prompt: %v", err)
+	}
+
+	// unmarshall the json file into a struct
+	var videoPromptData model.VideoPrompts 
+	err = json.Unmarshal(file, &videoPromptData)
+	if err != nil {
+		return "", "", fmt.Errorf("error unmarshalling chatGPT prompts: %v", err)
+	}
+
+	// check that the prompt exists
+	data, exists := videoPromptData[videoType]
+	if !exists {
+		return "", "", fmt.Errorf("the video type is not valid")
+	}
+	// pull the data out of the unmarshalled object 
+	chatInstructions := data.Instructions;
+	allChatPrompts := data.Prompts;
+
+	// get the random chat promtp
+	randIndex := rand.Intn(len(allChatPrompts))
+	chatPrompt := allChatPrompts[randIndex]
+	return chatInstructions, chatPrompt, nil
 }

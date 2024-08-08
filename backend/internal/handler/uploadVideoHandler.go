@@ -21,14 +21,19 @@ func UploadVideo(w http.ResponseWriter, r *http.Request) {
 
 	// retrieve the data from the needed scheduler
 	videoType, backgroundType, fontName, fontColor := database.RetrieveSchedulerInfo(5)
-	videoPath, videoPathErr := getRandomBackgroundFile(backgroundType)
+	videoPath, videoPathErr := getRandomBackgroundFile(backgroundType, "video")
 	if videoPathErr != nil {
 		panic(videoPathErr)
 	}
 
-	chatInstructions := "You are a compelling story teller. Each story you generate must be unique from any other story told, and should be around 30 seconds long"
-	chatPrompt := "Please right me a story about zombies taking over the world and one person fighting until the very end."
-	videoText, scriptErr := api.GenerateVideoScript(videoType, chatInstructions, chatPrompt)
+	backgroundAudioPath, videoPathErr := getRandomBackgroundFile(videoType, "audio")
+	if videoPathErr != nil {
+		panic(videoPathErr)
+	}
+
+	backgroundAudioPath += ""
+
+	videoText, scriptErr := api.GenerateVideoScript(videoType)
 	if scriptErr != nil {
 		panic(scriptErr)
 	}
@@ -36,56 +41,61 @@ func UploadVideo(w http.ResponseWriter, r *http.Request) {
 	if audioError != nil {
 		panic(audioError)
 	}
-	audioPath := "./assets/audio/output.wav"
 
+	audioPath := "./assets/audio/output.wav"
 	allText, timeStampError := api.TimeStampGenerator(audioPath)
 
 	if timeStampError != nil {
 		panic(timeStampError)
 	}
 
-	generateTikTokVideo(audioPath, videoPath, fontName, fontColor, allText)
+	generateTikTokVideo(audioPath, videoPath, backgroundAudioPath, fontName, fontColor, allText)
 
 	json.NewEncoder(w).Encode("success")
 }
 
-func getRandomBackgroundFile(backgroundType string) (string, error) {
-	directoryPath := fmt.Sprintf("./assets/video/%s/", backgroundType)
+func getRandomBackgroundFile(backgroundVideoType string, backgroundType string) (string, error) {
+	directoryPath := fmt.Sprintf("./assets/%s/%s/", backgroundType, backgroundVideoType)
 
-	// read the directory 
+	// read the directory
 	files, err := os.ReadDir(directoryPath)
 	if err != nil {
 		return "", fmt.Errorf("error opening directoy: %v", err)
 	}
 
-	// collect all of the file names 
-	var fileNames []string 
+	// collect all of the file names
+	var fileNames []string
 	for _, file := range files {
 		if file.Type().IsRegular() {
 			fileNames = append(fileNames, file.Name())
 		}
 	}
 
-	// verify files existed in the directory 
+	// verify files existed in the directory
 	if len(fileNames) == 0 {
 		return "", fmt.Errorf("error: no files exist in the firectory")
 	}
 
-	// set the random seed and choose the name of the file randomly
-	// rand.Seed(time.Now().UnixNano())
 	randIndex := rand.Intn(len(fileNames))
 	fileName := fileNames[randIndex]
 
 	return directoryPath + fileName, nil
 }
 
-func generateTikTokVideo(audioPath string, videoPath string, fontName string, fontColor string, allText *[]model.TextDisplay) {
-	// specify the path for the output file
+func generateTikTokVideo(audioPath string, videoPath string, backgroundAudioPath string, fontName string, fontColor string, allText *[]model.TextDisplay) {
+	// specify the path for the used files in the combination
 	outputPath := "./assets/video/output.mp4"
 	combinedPath := "./assets/video/combined.mp4"
+	combinedAudioPath := "./assets/audio/combined-output.wav"
+
+	// combine the two audio files
+	audioCombineErr := combineAudioFiles(audioPath, backgroundAudioPath, combinedAudioPath)
+	if audioCombineErr != nil {
+		panic(audioCombineErr)
+	}
 
 	// combine the mp4 and audio files into one video
-	combineErr := combineAudioAndVideo(audioPath, videoPath, combinedPath)
+	combineErr := combineAudioAndVideo(combinedAudioPath, videoPath, combinedPath)
 	if combineErr != nil {
 		panic(combineErr)
 	}
@@ -95,10 +105,31 @@ func generateTikTokVideo(audioPath string, videoPath string, fontName string, fo
 	if overlayErr != nil {
 		panic(overlayErr)
 	}
-	removeFileErr := deleteFile(combinedPath)
-	if removeFileErr != nil {
-		panic(removeFileErr)
+	// delete the audio and video files
+	removeErr := deleteFiles(combinedPath, audioPath, combinedAudioPath)
+	if removeErr != nil {
+		panic(removeErr)
 	}
+}
+
+func combineAudioFiles(audioPath string, backgroundAudioPath string, outputPath string) error {
+	cmd := exec.Command(
+		"ffmpeg",
+		"-i", audioPath,
+		"-i", backgroundAudioPath,
+		"-filter_complex", "[0:a][1:a]amix=inputs=2:duration=longest[a]",
+		"-map", "[a]",
+		"-c:a", "pcm_s16le", // Set the audio codec to PCM for WAV format
+		"-y", outputPath,
+	)
+
+	// Run the command and get the output
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("FFmpeg error combining audio files: %v\nOutput: %s", err, output)
+	}
+
+	return nil
 }
 
 func combineAudioAndVideo(audioPath string, videoPath string, outputPath string) error {
@@ -125,7 +156,7 @@ func overlayTextOnVideo(fontName string, fontColor string, combinedPath string, 
 		textFormat := fmt.Sprintf(
 			"drawtext=text='%s':fontfile=%s:fontsize=w/6:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/2:shadowx=2:shadowy=2:shadowcolor=black:enable='between(t,%s,%s)'",
 			textInterval.Text, fontFile, fontColor, textInterval.StartTime, textInterval.EndTime)
-	
+
 		filters = append(filters, textFormat)
 	}
 
@@ -136,14 +167,20 @@ func overlayTextOnVideo(fontName string, fontColor string, combinedPath string, 
 		return fmt.Errorf("ffmpeg error: %v\nOutput: %s", err, overlayOutput)
 	}
 
-	// delete the remaining files
-
 	return nil
 }
 
-func deleteFile(combinedPath string) error {
+func deleteFiles(combinedPath string, audioPath string, combinedAudioPath string) error {
 	combineErr := os.Remove(combinedPath)
 	if combineErr != nil {
+		return fmt.Errorf("error removing file")
+	}
+	outputErr := os.Remove(audioPath)
+	if outputErr != nil {
+		return fmt.Errorf("error removing file")
+	}
+	combineAudioErr := os.Remove(combinedAudioPath)
+	if combineAudioErr != nil {
 		return fmt.Errorf("error removing file")
 	}
 	return nil

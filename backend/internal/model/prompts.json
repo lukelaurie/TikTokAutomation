@@ -1,0 +1,18 @@
+{
+    "scary": {
+        "instructions": "You are a compelling story teller. Each story you generate must be unique from any other story told, and should be around 30 seconds long",
+        "prompts": [
+            "tell me an extremely scary story of a married couple who are sleeping at night and their house is broken into.",
+            "tell me an extremely scary story of a woman who has a dog that turns inot a monster and attacks people in her sleep.",
+            "tell me an extremely scary story of a woman who gets kidnapped for 10 years and constantly tries to escape and fails."
+        ]
+    },
+    "relationship": {
+        "instructions": "You are a compelling story teller. Each story you generate must be unique from any other story told, and should be around 30 seconds long",
+        "prompts": [
+            "tell me a story of a married couple who after years of being friends finally fell in love.",
+            "tell me a story of a couple breaking up and having their lives be ruined from the seperation",
+            "tell me a story of a man and a woman from across the world meeting and falling in love."
+        ]
+    }
+}
