@@ -9,6 +9,7 @@ func InitializeRoutes() *mux.Router {
 	router := mux.NewRouter() 
 	router.HandleFunc("/api/upload-video", handler.UploadVideo).Methods("POST")
 	router.HandleFunc("/api/register-user", handler.RegisterUser).Methods("POST")
+	router.HandleFunc("/api/login", handler.LoginUser).Methods("POST")
 
 	return router
 }

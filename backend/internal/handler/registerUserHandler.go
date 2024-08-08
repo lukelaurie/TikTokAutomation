@@ -3,21 +3,31 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/lukelaurie/TikTokAutomation/backend/internal/database"
+	"github.com/lukelaurie/TikTokAutomation/backend/internal/model"
+	"github.com/lukelaurie/TikTokAutomation/backend/internal/utils"
 	"net/http"
-	_ "github.com/lib/pq"
-	database "github.com/lukelaurie/TikTokAutomation/backend/internal/database"
 )
 
 func RegisterUser(w http.ResponseWriter, r *http.Request) {
-	// execute the query to add a new user
-	username := "test username2"
-	email := "testemail@google.com2"
-	password := "a password"
+	var reqBody model.RegisterRequest
 
-	query := `INSERT INTO users (username, email, password) VALUES ($1, $2, $3)`
-	_, err := database.DB.Exec(query, username, email, password)
+	// Decode the body of the request into the struct
+	err := json.NewDecoder(r.Body).Decode(&reqBody)
 	if err != nil {
-		panic(fmt.Errorf("database insert error: %v", err))
+		panic(fmt.Errorf("request decode error: %v", err))
+	}
+
+	// get the encoded passworded so not stored in plaintext in the database
+	password, err := utils.SaltAndHashPassword(reqBody.Password)
+	if err != nil {
+		panic(err)
+	}
+
+	// execute the query in the database
+	wasErr := database.RegisterUser(reqBody.Username, reqBody.Email, password, w)
+	if wasErr {
+		return
 	}
 
 	json.NewEncoder(w).Encode("user regiserd")
