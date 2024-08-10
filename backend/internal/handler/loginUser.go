@@ -32,6 +32,12 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// create the JWT token 
+
+	// sign the token with a secret key 
+
+	// place the token in a cookie in the request
+
 	// TODO generate cookie 
 	json.NewEncoder(w).Encode("login successful")
 }

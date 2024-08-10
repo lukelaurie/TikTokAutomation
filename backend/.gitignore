@@ -1,0 +1,4 @@
+# Remove all .env files 
+.env
+*.env
+**/.env
