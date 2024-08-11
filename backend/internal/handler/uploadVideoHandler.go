@@ -12,6 +12,7 @@ import (
 	api "github.com/lukelaurie/TikTokAutomation/backend/internal/api"
 	database "github.com/lukelaurie/TikTokAutomation/backend/internal/database"
 	model "github.com/lukelaurie/TikTokAutomation/backend/internal/model"
+	"github.com/lukelaurie/TikTokAutomation/backend/internal/utils"
 )
 
 func UploadVideo(w http.ResponseWriter, r *http.Request) {
@@ -23,30 +24,33 @@ func UploadVideo(w http.ResponseWriter, r *http.Request) {
 	videoType, backgroundType, fontName, fontColor := database.RetrieveSchedulerInfo(5)
 	videoPath, videoPathErr := getRandomBackgroundFile(backgroundType, "video")
 	if videoPathErr != nil {
-		panic(videoPathErr)
+		utils.LogAndAddServerError(videoPathErr, w)
+        return
 	}
 
 	backgroundAudioPath, videoPathErr := getRandomBackgroundFile(videoType, "audio")
 	if videoPathErr != nil {
-		panic(videoPathErr)
+		utils.LogAndAddServerError(videoPathErr, w)
+        return
 	}
-
-	backgroundAudioPath += ""
 
 	videoText, scriptErr := api.GenerateVideoScript(videoType)
 	if scriptErr != nil {
-		panic(scriptErr)
+		utils.LogAndAddServerError(scriptErr, w)
+        return
 	}
 	audioError := api.GenerateAudioFile(videoText)
 	if audioError != nil {
-		panic(audioError)
+		utils.LogAndAddServerError(audioError, w)
+        return
 	}
 
 	audioPath := "./assets/audio/output.wav"
 	allText, timeStampError := api.TimeStampGenerator(audioPath)
 
 	if timeStampError != nil {
-		panic(timeStampError)
+		utils.LogAndAddServerError(timeStampError, w)
+        return
 	}
 
 	generateTikTokVideo(audioPath, videoPath, backgroundAudioPath, fontName, fontColor, allText)

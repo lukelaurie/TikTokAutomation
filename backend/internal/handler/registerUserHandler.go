@@ -15,13 +15,15 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	// Decode the body of the request into the struct
 	err := json.NewDecoder(r.Body).Decode(&reqBody)
 	if err != nil {
-		panic(fmt.Errorf("request decode error: %v", err))
+		utils.LogAndAddServerError(fmt.Errorf("request decode error: %v", err), w)
+		return
 	}
 
-	// get the encoded passworded so not stored in plaintext in the database
+	// get the encoded password so not stored in plaintext in the database
 	password, err := utils.SaltAndHashPassword(reqBody.Password)
 	if err != nil {
-		panic(err)
+		utils.LogAndAddServerError(err, w)
+		return
 	}
 
 	// execute the query in the database
@@ -30,5 +32,12 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode("user regiserd")
+	// add new entry for preference tracker for the new user to manage next preference
+	err = database.AddNewUserPreferenceTracker(reqBody.Username)
+	if err != nil {
+		utils.LogAndAddServerError(err, w)
+		return
+	}
+
+	json.NewEncoder(w).Encode("user registered")
 }

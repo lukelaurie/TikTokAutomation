@@ -21,6 +21,7 @@ func InitializeRoutes() *mux.Router {
 	protectedRouter := apiRouter.PathPrefix("/protected").Subrouter()
 	protectedRouter.Use(middleware.CheckAuthMiddleware) // apply the middleware to first authorize
 	protectedRouter.HandleFunc("/retrieve-preferences", handler.RetrievePreferences).Methods("GET")
+	protectedRouter.HandleFunc("/add-new-preference", handler.AddNewPreference).Methods("POST")
 
 	return router
 }
