@@ -1,18 +1,22 @@
-package database 
+package database
 
 import (
 	"database/sql"
 	"fmt"
+	"os"
+
 	_ "github.com/lib/pq"
 )
 
-// global variable to manage the database connection 
+// global variable to manage the database connection
 var DB *sql.DB
 
 func InitDb() {
+	dbPassword := os.Getenv("DB_PASSWORD")
+
 	var err error
 	// connect to the database
-	connStr := "host=localhost port=5432 user=postgres password=Sabinois@1225 dbname=postgres sslmode=disable"
+	connStr := fmt.Sprintf("host=localhost port=5432 user=postgres password=%s dbname=postgres sslmode=disable", dbPassword)
 
 	DB, err = sql.Open("postgres", connStr)
 	if err != nil {

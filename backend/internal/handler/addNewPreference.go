@@ -50,11 +50,11 @@ func AddNewPreference(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// increment the count in the database by one 
-	// err = database.IncrementPreferenceCount(username, nextPreferenceIndex)
-	// if err != nil {
-	// 	utils.LogAndAddServerError(err, w)
-	// 	return
-	// }
+	err = database.IncrementPreferenceTracker(username, nextPreferenceIndex, true)
+	if err != nil {
+		utils.LogAndAddServerError(err, w)
+		return
+	}
 
 	json.NewEncoder(w).Encode(username)
 }
