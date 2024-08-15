@@ -8,4 +8,11 @@ echo "Starting PostgreSQL..."
 pg_ctl -D "$DATA_DIR" start > /dev/null 2>&1
 
 go build ./cmd/app/main.go
-./main
+
+if [ "$1" == "test" ]; then
+    echo "Running in test mode..."
+    ./main -test   
+else
+    echo "Running in normal mode..."
+    ./main
+fi

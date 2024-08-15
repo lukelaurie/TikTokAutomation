@@ -79,7 +79,7 @@ func TimeStampGenerator(audioPath string) (*[]model.TextDisplay, error) {
 }
 
 func processTranscriptResponse(transcriptResponse *model.TranscriptResponse) *[]model.TextDisplay {
-	// use the split text over the words because it contains grammer
+	// use the split text over the words because it contains grammar
 	splitText := strings.Split(transcriptResponse.Text, " ")
 
 	// extract all words and their time stamps
@@ -116,6 +116,8 @@ func processTranscriptResponse(transcriptResponse *model.TranscriptResponse) *[]
 			Text:      curWord,
 			StartTime: fmt.Sprintf("%.2f", earlyStartTime),
 			EndTime:   fmt.Sprintf("%.2f", earlyEndTime)})
+		// this generates the text to be placed in test text
+		// fmt.Printf("%s:%s:%s^^", curWord, fmt.Sprintf("%.2f", earlyStartTime), fmt.Sprintf("%.2f", earlyEndTime))
 	}
 	return &allText
 }
