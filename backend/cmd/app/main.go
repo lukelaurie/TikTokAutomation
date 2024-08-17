@@ -2,10 +2,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/joho/godotenv"
 	"github.com/lukelaurie/TikTokAutomation/backend/internal/database"
@@ -25,7 +23,6 @@ func main() {
 	var isTestMode bool
 	flag.BoolVar(&isTestMode, "test", false, "Run server in test mode") // set to true if test command passed
 	flag.Parse()
-	fmt.Println("Arguments:", os.Args)
 
 	// initialize the database connection
 	database.InitDb()

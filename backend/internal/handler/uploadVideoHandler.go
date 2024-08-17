@@ -206,6 +206,7 @@ func generateTikTokVideo(preference model.Preference, videoCreationInfo model.Vi
 	outputPath := "./assets/video/output.mp4"
 	combinedPath := "./assets/video/combined.mp4"
 	combinedAudioPath := "./assets/audio/combined-output.wav"
+	filterFilePath := "filter.txt"
 
 	// combine the two audio files
 	audioCombineErr := combineAudioFiles(videoCreationInfo.AudioPath, videoCreationInfo.BackgroundAudioPath, combinedAudioPath)
@@ -220,12 +221,12 @@ func generateTikTokVideo(preference model.Preference, videoCreationInfo model.Vi
 	}
 
 	// add the text from the api onto the video
-	overlayErr := overlayTextOnVideo(preference.FontName, preference.FontColor, combinedPath, outputPath, videoCreationInfo.AllText)
+	overlayErr := overlayTextOnVideo(preference.FontName, preference.FontColor, combinedPath, outputPath, videoCreationInfo.AllText, filterFilePath)
 	if overlayErr != nil {
 		return overlayErr
 	}
 	// delete the audio and video files
-	removeErr := deleteFiles(combinedPath, videoCreationInfo.AudioPath, combinedAudioPath)
+	removeErr := deleteFiles(combinedPath, videoCreationInfo.AudioPath, combinedAudioPath, filterFilePath)
 	if removeErr != nil {
 		return removeErr
 	}
@@ -264,24 +265,31 @@ func combineAudioAndVideo(audioPath string, videoPath string, outputPath string)
 	return nil
 }
 
-func overlayTextOnVideo(fontName string, fontColor string, combinedPath string, outputPath string, allText *[]model.TextDisplay) error {
-	// textIntervals := generateTextDisplayIntervals(videoText)
+func overlayTextOnVideo(fontName string, fontColor string, combinedPath string, outputPath string, allText *[]model.TextDisplay, filterFilePath string) error {
 	textIntervals := *allText
 
 	// filter the string to place all start and end dates
-	var filters []string
 	fontFile := fmt.Sprintf("./assets/font/%s.ttf", fontName)
+
+	// write the text overlay to a file to prevent having to run a super long command
+	filterFile, err := os.Create(filterFilePath)
+	if err != nil {
+		return fmt.Errorf("error creating the filter.txt file: %v", err)
+	}
+	defer filterFile.Close()
 
 	for _, textInterval := range textIntervals {
 		textFormat := fmt.Sprintf(
 			"drawtext=text='%s':fontfile=%s:fontsize=w/6:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/2:shadowx=2:shadowy=2:shadowcolor=black:enable='between(t,%s,%s)'",
 			textInterval.Text, fontFile, fontColor, textInterval.StartTime, textInterval.EndTime)
 
-		filters = append(filters, textFormat)
+		// write the text to the file
+		_, err := filterFile.WriteString(textFormat + ",")
+		if err != nil {
+			return fmt.Errorf("error writing to the filter.txt file: %v", err)
+		}
 	}
-
-	filteredString := strings.Join(filters, ",")
-	cmdOverlayText := exec.Command("ffmpeg.exe", "-i", combinedPath, "-vf", filteredString, "-c:a", "copy", "-y", outputPath)
+	cmdOverlayText := exec.Command("ffmpeg.exe", "-i", combinedPath, "-filter_complex_script", filterFilePath, "-c:a", "copy", "-y", outputPath)
 	overlayOutput, err := cmdOverlayText.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("ffmpeg error: %v\nOutput: %s", err, overlayOutput)
@@ -290,21 +298,67 @@ func overlayTextOnVideo(fontName string, fontColor string, combinedPath string, 
 	return nil
 }
 
-func deleteFiles(combinedPath string, audioPath string, combinedAudioPath string) error {
+// func overlayTextOnVideo(fontName string, fontColor string, combinedPath string, outputPath string, allText *[]model.TextDisplay) error {
+// 	textIntervals := *allText
+// 	// Define the filter file path
+// 	filterFilePath := "filters.txt"
+
+// 	// Open or create the filter file
+// 	filterFile, err := os.Create(filterFilePath)
+// 	if err != nil {
+// 		return fmt.Errorf("error creating the filter file: %v", err)
+// 	}
+// 	defer filterFile.Close()
+
+// 	// Write filter commands to the file
+// 	for _, textInterval := range textIntervals {
+// 		textFormat := fmt.Sprintf(
+// 			"drawtext=text='%s':fontfile=%s:fontsize=w/6:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/2:shadowx=2:shadowy=2:shadowcolor=black:enable='between(t,%s,%s)'\n",
+// 			textInterval.Text, fontName, fontColor, textInterval.StartTime, textInterval.EndTime)
+
+// 		_, err := filterFile.WriteString(textFormat)
+// 		if err != nil {
+// 			return fmt.Errorf("error writing to the filter file: %v", err)
+// 		}
+// 	}
+
+// 	// Prepare the ffmpeg command
+// 	cmd := exec.Command("ffmpeg", "-i", combinedPath, "-filter_complex_script", filterFilePath, "-c:a", "copy", outputPath)
+
+// 	// Run the ffmpeg command and capture output
+// 	output, err := cmd.CombinedOutput()
+// 	if err != nil {
+// 		return fmt.Errorf("ffmpeg error: %v\nOutput: %s", err, output)
+// 	}
+
+// 	// Optionally remove the filter file
+// 	// err = os.Remove(filterFilePath)
+// 	// if err != nil {
+// 	// 	return fmt.Errorf("error removing the filter file: %v", err)
+// 	// }
+
+// 	return nil
+// }
+
+func deleteFiles(combinedPath string, audioPath string, combinedAudioPath string, filterFilePath string) error {
 	combineErr := os.Remove(combinedPath)
 	if combineErr != nil {
-		return fmt.Errorf("error removing file")
+		return fmt.Errorf("error removing file: %v", combineErr)
 	}
 	// keep the test audio file
 	if audioPath != "./assets/audio/testOutput.wav" {
 		outputErr := os.Remove(audioPath)
 		if outputErr != nil {
-			return fmt.Errorf("error removing file")
+			return fmt.Errorf("error removing file: %v", combineErr)
 		}
 	}
 	combineAudioErr := os.Remove(combinedAudioPath)
 	if combineAudioErr != nil {
-		return fmt.Errorf("error removing file")
+		return fmt.Errorf("error removing file: %v", combineErr)
+	}
+	textDisplayErr := os.Remove(filterFilePath)
+	if textDisplayErr != nil {
+		return fmt.Errorf("error removing file: %v", combineErr)
 	}
 	return nil
 }
