@@ -11,6 +11,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/agnivade/levenshtein"
+
 	"github.com/lukelaurie/TikTokAutomation/backend/internal/model"
 )
 
@@ -87,25 +89,41 @@ func processTranscriptResponse(transcriptResponse *model.TranscriptResponse) *[]
 	allWords := transcriptResponse.Words
 	endTime := 0.0
 
-	for i := 0; i < len(allWords) && i < len(splitText); i++ {
-		// use the previous end time of prior word to account for whisper miscalculations
-		startTime := endTime
-		curWord := splitText[i]
+	allWordsIndex := 0
+	splitTextIndex := 0
+	// for i := 0; i < len(allWords) && i < len(splitText); i++ {
+	for allWordsIndex < len(allWords) && splitTextIndex < len(splitText) {
+		if !checkIfWordsSame(allWords[allWordsIndex].Word, splitText[splitTextIndex]) {
+			// check if splitText was missing a word
+			if splitTextIndex+1 < len(splitText) && checkIfWordsSame(allWords[allWordsIndex].Word, splitText[splitTextIndex+1]) {
+				splitTextIndex += 1
+			}
+			// check if allWords was missing a word
+			if allWordsIndex+1 < len(allWords) && checkIfWordsSame(allWords[allWordsIndex+1].Word, splitText[splitTextIndex]) {
+				allWordsIndex += 1
+			}
+		}
 
+		curWord := splitText[splitTextIndex]
 		// add new words while they fit into the screen and not end of sentence
 		for !strings.HasSuffix(curWord, ".") &&
-			i < len(allWords)-1 &&
-			(len(curWord)+len(splitText[i+1])+1) <= 11 {
-			curWord += " " + splitText[i+1]
-			i++
+			splitTextIndex < len(splitText)-1 &&
+			(len(curWord)+len(splitText[splitTextIndex+1])+1) <= 11 {
+			curWord += " " + splitText[splitTextIndex+1]
+			splitTextIndex += 1
+			allWordsIndex += 1
 		}
-		endTime = allWords[i].End
+
+		// use the previous end time of prior word to account for whisper miscalculations
+		startTime := endTime
+		endTime = allWords[allWordsIndex].End
+
 		// add to end time if end of sentence to account for the pause
 		if strings.HasSuffix(curWord, ".") {
 			endTime += .7
 		}
 
-		// ` causes string to be invalid
+		// ' causes string to be invalid
 		curWord = strings.ReplaceAll(curWord, "'", "’")
 
 		// have word come up a little before spoken
@@ -118,6 +136,19 @@ func processTranscriptResponse(transcriptResponse *model.TranscriptResponse) *[]
 			EndTime:   fmt.Sprintf("%.2f", earlyEndTime)})
 		// this generates the text to be placed in test text
 		// fmt.Printf("%s:%s:%s^^", curWord, fmt.Sprintf("%.2f", earlyStartTime), fmt.Sprintf("%.2f", earlyEndTime))
+		
+		splitTextIndex += 1
+		allWordsIndex += 1
 	}
 	return &allText
+}
+
+func checkIfWordsSame(word1 string, word2 string) bool {
+	// Calculate the Levenshtein distance between the two words
+	distance := levenshtein.ComputeDistance(word1, word2)
+	maxLen := max(len(word1), len(word2))
+
+	// Calculate the similarity percentage
+	similarity := (1 - float64(distance)/float64(maxLen)) * 100
+	return similarity > 50
 }

@@ -217,7 +217,7 @@ func combineAudioFiles(audioPath string, backgroundAudioPath string, outputPath 
 		"ffmpeg",
 		"-i", audioPath,
 		"-i", backgroundAudioPath,
-		"-filter_complex", "[0:a][1:a]amix=inputs=2:duration=longest[a]",
+		"-filter_complex", "[0:a][1:a]amix=inputs=2:duration=shortest[a]",
 		"-map", "[a]",
 		"-c:a", "pcm_s16le", // Set the audio codec to PCM for WAV format
 		"-y", outputPath,
