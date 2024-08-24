@@ -258,9 +258,12 @@ func overlayTextOnVideo(fontName string, fontColor string, combinedPath string, 
 	defer filterFile.Close()
 
 	for _, textInterval := range textIntervals {
+		// scale text size down if to large
+		fontDivideFactor := getDivideFactor(textInterval.Text)
+
 		textFormat := fmt.Sprintf(
-			"drawtext=text='%s':fontfile=%s:fontsize=w/6:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/2:shadowx=2:shadowy=2:shadowcolor=black:enable='between(t,%s,%s)'",
-			textInterval.Text, fontFile, fontColor, textInterval.StartTime, textInterval.EndTime)
+			"drawtext=text='%s':fontfile=%s:fontsize=w/%d:fontcolor=%s:x=(w-text_w)/2:y=(h-text_h)/2:shadowx=2:shadowy=2:shadowcolor=black:enable='between(t,%s,%s)'",
+			textInterval.Text, fontFile, fontDivideFactor, fontColor, textInterval.StartTime, textInterval.EndTime)
 
 		// write the text to the file
 		_, err := filterFile.WriteString(textFormat + ",")
@@ -275,6 +278,19 @@ func overlayTextOnVideo(fontName string, fontColor string, combinedPath string, 
 	}
 
 	return nil
+}
+
+func getDivideFactor(text string) int32 {
+	textLen := len(text)
+
+	// if multiple words there is no reason to scale
+	if strings.Contains(text, " ")  || textLen < 11 {
+		return 6
+	} else if textLen < 13 {
+		return 7
+	} else {
+		return 8
+	}
 }
 
 func deleteFiles(combinedPath string, audioPath string, combinedAudioPath string, filterFilePath string) error {
