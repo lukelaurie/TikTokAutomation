@@ -133,13 +133,13 @@ func retrieveAndUpdatePreferenceIndex(username string) (int, error) {
 		return -1, err
 	}
 
-	if preferenceTracker.CurPreferenceCount == 0 {
+	if preferenceTracker.CurrentPreferenceCount == 0 {
 		return -1, fmt.Errorf("user: %s has not yet created a preference", username)
 	}
 
 	// increment the preference to next index or restart to front if already created a video for all
-	newPreferenceIndex := preferenceTracker.CurPreferenceOrder + 1
-	if newPreferenceIndex > preferenceTracker.CurPreferenceCount {
+	newPreferenceIndex := preferenceTracker.CurrentPreferenceOrder + 1
+	if newPreferenceIndex > preferenceTracker.CurrentPreferenceCount {
 		newPreferenceIndex = 1
 	}
 
@@ -149,7 +149,7 @@ func retrieveAndUpdatePreferenceIndex(username string) (int, error) {
 		return -1, fmt.Errorf("error incrementing preference index in the database")
 	}
 
-	return preferenceTracker.CurPreferenceOrder, nil
+	return newPreferenceIndex, nil
 }
 
 func getRandomBackgroundFile(backgroundVideoType string, backgroundType string) (string, error) {

@@ -1,6 +1,7 @@
 package database
 
 import (
+	// "database/sql"
 	"database/sql"
 	"fmt"
 
@@ -10,11 +11,7 @@ import (
 func RetrieveSchedulerInfo(username string, curScheduler int) (model.Preference, error) {
 	var preference model.Preference
 
-	query := `SELECT video_type, background_video_type, font_name, font_color FROM preferences WHERE username = $1 AND preference_order = $2`
-
-	// search for the row
-	err := DB.QueryRow(query, username, curScheduler).Scan(&preference.VideoType, &preference.BackgroundVideoType,
-		&preference.FontName, &preference.FontColor)
+	err := DB.First(&preference, "username = ? AND preference_order = ?", username, curScheduler).Error
 	if err != nil {
 		// check if the error was from no user being found
 		if err == sql.ErrNoRows {
@@ -22,36 +19,14 @@ func RetrieveSchedulerInfo(username string, curScheduler int) (model.Preference,
 		}
 		return preference, err
 	}
+
 	return preference, nil
 }
 
-func RetrieveAndUpdatePreferenceIndex(username string) (int, error) {
-	// get the current index for the preference
-	preferenceTracker, err := RetrievePreferenceTracker(username)
-	if err != nil {
-		return -1, err
-	}
-
-	if preferenceTracker.CurPreferenceCount == 0 {
-		return -1, fmt.Errorf("username has not yet created a preference")
-	}
-
-	// increment the preference to next index or restart to front if already created a video for all
-	newPreferenceIndex := preferenceTracker.CurPreferenceOrder + 1
-	if newPreferenceIndex > preferenceTracker.CurPreferenceCount {
-		newPreferenceIndex = 1
-	}
-
-	return preferenceTracker.CurPreferenceOrder, nil
-}
 func RetrievePreferenceTracker(username string) (model.PreferenceTracker, error) {
 	var preferenceTracker model.PreferenceTracker
 
-	query := `SELECT id, username, current_preference_order, current_preference_count FROM user_preference_tracker WHERE username = $1`
-
-	// search for the row
-	err := DB.QueryRow(query, username).Scan(&preferenceTracker.Id, &preferenceTracker.Username,
-		&preferenceTracker.CurPreferenceOrder, &preferenceTracker.CurPreferenceCount)
+	err := DB.First(&preferenceTracker, "username = ?", username).Error
 	if err != nil {
 		// check if the error was from no user being found
 		if err == sql.ErrNoRows {
@@ -63,28 +38,45 @@ func RetrievePreferenceTracker(username string) (model.PreferenceTracker, error)
 }
 
 func AddNewUserPreference(preference model.Preference, username string, preferenceIndex int) error {
-	query := `INSERT INTO preferences (username, video_type, background_video_type, 
-		font_name, font_color, preference_order) VALUES ($1, $2, $3, $4, $5, $6)`
-	_, err := DB.Exec(query, username, preference.VideoType, preference.BackgroundVideoType,
-		preference.FontName, preference.FontColor, preferenceIndex)
+	newPreference := model.Preference{
+		Username: username,
+		VideoType: preference.VideoType,
+		BackgroundVideoType: preference.BackgroundVideoType,
+		FontName: preference.FontName,
+		FontColor: preference.FontColor,
+		PreferenceOrder: preferenceIndex,
+	}
+
+	// insert the user into the database 
+	err := DB.Create(&newPreference).Error
 	return err
 }
 
 func AddNewUserPreferenceTracker(username string) error {
-	query := `INSERT INTO user_preference_tracker (username) VALUES ($1)`
-	_, err := DB.Exec(query, username)
+	preferenceTracker := model.PreferenceTracker{
+		Username: username,
+	}
+
+	// insert the user into the database 
+	err := DB.Create(&preferenceTracker).Error
 	return err
 }
 
 func IncrementPreferenceTracker(username string, preferenceIndex int, isPreferenceCount bool) error {
-	var preferenceCount string
+	var preferenceTracker model.PreferenceTracker
+	err := DB.First(&preferenceTracker, "username = ?", username).Error
+	if err != nil {
+		return err
+	} 
+
+	// determine if increasing total count of preferences or changing the index pointing to
 	if isPreferenceCount {
-		preferenceCount = "current_preference_count"
+		preferenceTracker.CurrentPreferenceCount += 1
 	} else {
-		preferenceCount = "current_preference_order"
+		preferenceTracker.CurrentPreferenceOrder = preferenceIndex
 	}
 
-	query := fmt.Sprintf(`UPDATE user_preference_tracker SET %s=%d WHERE username=($1)`, preferenceCount, preferenceIndex)
-	_, err := DB.Exec(query, username)
+	// update the preference tracker with the new count
+	err = DB.Save(&preferenceTracker).Error
 	return err
 }

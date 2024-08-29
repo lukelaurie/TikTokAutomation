@@ -26,7 +26,7 @@ func main() {
 
 	// initialize the database connection
 	database.InitDb()
-	defer database.DB.Close()
+	defer database.SqlDB.Close()
 	
 	// set up the router
 	router := route.InitializeRoutes(isTestMode)

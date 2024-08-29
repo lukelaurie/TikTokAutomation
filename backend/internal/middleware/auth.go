@@ -41,7 +41,7 @@ func CheckAuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// etract the username from the parsed out jwt
+		// extract the username from the parsed out jwt
 		claims, ok := token.Claims.(jwt.MapClaims)  // sets claims if jwt.MapClaims exists within it
 		if !ok {
 			http.Error(w, "Unauthorized: Invalid claims", http.StatusUnauthorized)

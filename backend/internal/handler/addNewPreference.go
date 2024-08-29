@@ -34,13 +34,13 @@ func AddNewPreference(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// verify that user only has 10 preferences max
-	if preferenceTracker.CurPreferenceCount >= 10 {
+	if preferenceTracker.CurrentPreferenceCount >= 10 {
 		http.Error(w, "user cannot have more than 10 preferences", http.StatusBadRequest)
 		return
 	} 
 	
 	// need to keep track of index in preference so can know the next preference to look at
-	nextPreferenceIndex := preferenceTracker.CurPreferenceCount + 1 
+	nextPreferenceIndex := preferenceTracker.CurrentPreferenceCount + 1 
 
 	// try adding the new preference into the database
 	err = database.AddNewUserPreference(reqBody, username, nextPreferenceIndex)

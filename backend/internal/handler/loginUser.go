@@ -22,7 +22,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	// search for the user in the database
 	user, err := database.RetrieveUser(username)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusConflict)
+		http.Error(w, "invalid username", http.StatusConflict)
 		return
 	}
 
@@ -40,6 +40,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	// sign the token with a secret key
 	jwtSecretKey := os.Getenv("JWT_SECRET_KEY")
+
 	// encodes both the username and exp into tokenString
 	tokenString, err := jwtToken.SignedString([]byte(jwtSecretKey))
 	if err != nil {

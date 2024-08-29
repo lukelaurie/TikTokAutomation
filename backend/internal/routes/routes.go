@@ -21,6 +21,7 @@ func InitializeRoutes(isTestMode bool) *mux.Router {
 	// private routes that require middleware
 	protectedRouter := apiRouter.PathPrefix("/protected").Subrouter()
 	protectedRouter.Use(middleware.CheckAuthMiddleware) // apply the middleware to first authorize
+	
 	protectedRouter.HandleFunc("/upload-video", func(w http.ResponseWriter, r *http.Request) {
 		handler.UploadVideo(isTestMode, w, r)
 	}).Methods("POST")

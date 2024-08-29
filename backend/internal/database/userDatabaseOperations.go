@@ -1,49 +1,46 @@
 package database
 
 import (
-	"database/sql"
-	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/lib/pq"
 	"github.com/lukelaurie/TikTokAutomation/backend/internal/model"
 )
 
 func RetrieveUser(username string) (model.User, error) {
 	var user model.User
-	query := `SELECT username, email, password FROM users WHERE username = $1`
 
-	// search for the row 
-	err := DB.QueryRow(query, username).Scan(&user.Username, &user.Email, &user.Password)
+	err := DB.First(&user, "username = ?", username).Error
 	if err != nil {
-		// check if the error was from no user being found 
-		if err == sql.ErrNoRows {
-			return user, fmt.Errorf("username invalid")
-		}
 		return user, err
 	}
 	return user, nil
 }
 
 func RegisterUser(username string, email string, password string, w http.ResponseWriter) bool {
-	query := `INSERT INTO users (username, email, password) VALUES ($1, $2, $3)`
-	_, err := DB.Exec(query, username, email, password)
-	if err != nil {
-		// check if the error is a unique constraint violation
-		pqErr, ok := err.(*pq.Error)
-		if !ok || pqErr.Code != "23505" { // check for unique constraint violation
-			http.Error(w, "database insert erro", http.StatusInternalServerError)
-			return true
-		}
-		// check what violation occured
-		if strings.Contains(pqErr.Message, "users_pkey") {
-			http.Error(w, "username already exists", http.StatusConflict)
-		} else if strings.Contains(pqErr.Message, "email") {
-			http.Error(w, "email already exists", http.StatusConflict)
-		}
-		return true
+	newUser := model.User{
+		Username: username,
+		Email: email,
+		Password: password,
 	}
 
-	return false
+	// insert the user into the database 
+	err := DB.Create(&newUser).Error
+	if err == nil {
+		return false
+	}
+
+	if isUniqueViolation(err, "users_pkey") {
+		http.Error(w, "username already exists", http.StatusConflict)
+	} else if isUniqueViolation(err, "email") {
+		http.Error(w, "email already exists", http.StatusConflict)
+	} else {
+		http.Error(nil, "database insert error", http.StatusInternalServerError)
+	}
+	return true
+}
+
+func isUniqueViolation(err error, constraint string) bool {
+	return strings.Contains(err.Error(), "unique constraint") && 
+		   strings.Contains(err.Error(), constraint)
 }
