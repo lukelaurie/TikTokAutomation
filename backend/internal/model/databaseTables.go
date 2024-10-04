@@ -7,18 +7,19 @@ type User struct {
 }
 
 type Preference struct {
-	ID                 int    `gorm:"primaryKey;autoIncrement"`
-	Username           string `gorm:"not null;index;references:Username"`
-	VideoType          string `gorm:"not null"`
+	ID                  int    `gorm:"primaryKey;autoIncrement"`
+	Username            string `gorm:"not null;index;references:Username"`
+	VideoType           string `gorm:"not null"`
 	BackgroundVideoType string `gorm:"not null"`
-	FontName           string `gorm:"not null"`
-	FontColor          string `gorm:"not null"`
-	PreferenceOrder    int    
+	AiVoice             string `gorm:"not null"`
+	FontName            string `gorm:"not null"`
+	FontColor           string `gorm:"not null"`
+	PreferenceOrder     int
 }
 
 type PreferenceTracker struct {
-	ID                    int    `gorm:"primaryKey;autoIncrement"`
-	Username              string `gorm:"not null;index;references:Username"`
+	ID                     int    `gorm:"primaryKey;autoIncrement"`
+	Username               string `gorm:"not null;index;references:Username"`
 	CurrentPreferenceOrder int    `gorm:"default:1"`
 	CurrentPreferenceCount int    `gorm:"default:0"`
 }

@@ -4,7 +4,6 @@ import (
 	// "database/sql"
 	"database/sql"
 	"fmt"
-
 	"github.com/lukelaurie/TikTokAutomation/backend/internal/model"
 )
 
@@ -22,6 +21,18 @@ func RetrieveSchedulerInfo(username string, curScheduler int) (model.Preference,
 
 	return preference, nil
 }
+
+func RetrieveAllUserPreferences(username string) ([]model.Preference, error) {
+	var preferences []model.Preference
+
+	err := DB.Where("username = ?", username).Find(&preferences).Error
+	if err != nil {
+		return preferences, fmt.Errorf("error fetching preferences: %v", err)
+	}
+
+	return preferences, nil
+}
+
 
 func RetrievePreferenceTracker(username string) (model.PreferenceTracker, error) {
 	var preferenceTracker model.PreferenceTracker
@@ -42,6 +53,7 @@ func AddNewUserPreference(preference model.Preference, username string, preferen
 		Username: username,
 		VideoType: preference.VideoType,
 		BackgroundVideoType: preference.BackgroundVideoType,
+		AiVoice: preference.AiVoice,
 		FontName: preference.FontName,
 		FontColor: preference.FontColor,
 		PreferenceOrder: preferenceIndex,

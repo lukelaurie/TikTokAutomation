@@ -9,10 +9,9 @@ import (
 	"os/exec"
 	"strings"
 
-	api "github.com/lukelaurie/TikTokAutomation/backend/internal/api"
-	database "github.com/lukelaurie/TikTokAutomation/backend/internal/database"
-	"github.com/lukelaurie/TikTokAutomation/backend/internal/middleware"
-	model "github.com/lukelaurie/TikTokAutomation/backend/internal/model"
+	"github.com/lukelaurie/TikTokAutomation/backend/internal/api"
+	"github.com/lukelaurie/TikTokAutomation/backend/internal/database"
+	"github.com/lukelaurie/TikTokAutomation/backend/internal/model"
 	"github.com/lukelaurie/TikTokAutomation/backend/internal/utils"
 )
 
@@ -20,11 +19,12 @@ func UploadVideo(isTestMode bool, w http.ResponseWriter, r *http.Request) {
 	// TODO -> Get all user with passed in membership type
 
 	// this is TEMPORARY to get user from cookie. In future get all for membership type. And execute
-	username, ok := middleware.GetUsernameFromContext(r.Context())
-	if !ok {
-		http.Error(w, "Username not found in context", http.StatusInternalServerError)
-		return
-	}
+	// username, ok := middleware.GetUsernameFromContext(r.Context())
+	// if !ok {
+	// 	http.Error(w, "Username not found in context", http.StatusInternalServerError)
+	// 	return
+	// }
+	username := "user4"
 
 	preference, dbErr := getPreferenceFromDatabase(username)
 	if dbErr != nil {
@@ -108,7 +108,7 @@ func getVideoCreationInformation(preference model.Preference, isTestMode bool) (
 			return model.VideoCreationInfo{}, scriptErr
 		}
 
-		audioError := api.GenerateAudioFile(videoText)
+		audioError := api.GenerateAudioFile(videoText, preference.AiVoice)
 		if audioError != nil {
 			return model.VideoCreationInfo{}, audioError
 		}

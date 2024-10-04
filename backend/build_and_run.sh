@@ -4,7 +4,7 @@
 DATA_DIR="C:/Program Files/PostgreSQL/16/data"
 
 # Check if PostgreSQL is running
-# echo "Starting PostgreSQL..."
+echo "Starting PostgreSQL..."
 # pg_ctl -D "$DATA_DIR" start > /dev/null 2>&1
 
 go build ./cmd/app/main.go

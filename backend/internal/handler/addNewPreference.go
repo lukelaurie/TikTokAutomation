@@ -56,5 +56,5 @@ func AddNewPreference(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(username)
+	json.NewEncoder(w).Encode("preference added successfully")
 }

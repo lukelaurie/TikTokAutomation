@@ -10,7 +10,7 @@ import (
 )
 
 func RegisterUser(w http.ResponseWriter, r *http.Request) {
-	var reqBody model.RegisterRequest
+	var reqBody model.User
 
 	// Decode the body of the request into the struct
 	err := json.NewDecoder(r.Body).Decode(&reqBody)

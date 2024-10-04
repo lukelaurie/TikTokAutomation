@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func GenerateAudioFile(videoText string) error {
+func GenerateAudioFile(videoText string, voice string) error {
 	speechKey := os.Getenv("SPEECH_KEY")
 	speechRegion := os.Getenv("SPEECH_REGION")
 
@@ -16,10 +16,10 @@ func GenerateAudioFile(videoText string) error {
 
 	body := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 	<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
-		<voice xml:lang="en-US" xml:gender="Female" name="en-US-JennyNeural">
+		<voice xml:lang="en-US" name="%s">
 			%s
 		</voice>
-	</speak>`, videoText)
+	</speak>`, voice, videoText)
 
 
 	// generate the request

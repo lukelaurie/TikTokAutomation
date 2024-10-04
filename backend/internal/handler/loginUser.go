@@ -50,7 +50,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	// place the token in a cookie in the request
 	http.SetCookie(w, &http.Cookie{
-		Name:     "token",
+		Name:     "TikTokAutomationToken",
 		Value:    tokenString,
 		Expires:  time.Now().Add(time.Hour * 72),
 		HttpOnly: true,
