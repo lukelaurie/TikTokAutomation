@@ -24,7 +24,7 @@ func UploadVideo(isTestMode bool, w http.ResponseWriter, r *http.Request) {
 	// 	http.Error(w, "Username not found in context", http.StatusInternalServerError)
 	// 	return
 	// }
-	username := "user4"
+	username := "user5"
 
 	preference, dbErr := getPreferenceFromDatabase(username)
 	if dbErr != nil {

@@ -2,17 +2,19 @@
     "scary": {
         "instructions": "You are a compelling story teller. Each story you generate must be unique from any other story told, and should be around 30 seconds long",
         "prompts": [
-            "tell me an extremely scary story of a married couple who are sleeping at night and their house is broken into.",
-            "tell me an extremely scary story of a woman who has a dog that turns inot a monster and attacks people in her sleep.",
-            "tell me an extremely scary story of a woman who gets kidnapped for 10 years and constantly tries to escape and fails."
+            "tell me a story of a boy living in poverty with no parents that one day gets possessed by a demon and at first the boy has control over the demon inside of him but slowly the demon eats away at his psyche unitl one day the boy looses control of his body to the demon."
+            
         ]
     },
     "relationship": {
         "instructions": "You are a compelling story teller. Each story you generate must be unique from any other story told, and should be around 30 seconds long",
         "prompts": [
-            "tell me a story of a married couple who after years of being friends finally fell in love.",
-            "tell me a story of a couple breaking up and having their lives be ruined from the seperation",
-            "tell me a story of a man and a woman from across the world meeting and falling in love."
+        
+            "tell me a story of a man and a woman that meet as childhood friends then forget eachothers name for an even about eachother for a long time but later in life they find eachother and learn eachothers name.",
+            "tell me a story of a piano prodigy who loses his ability to hear the sound of the piano after his mother's death but regains his love for music through the influence of a woman who is a free-spirited violinist they play together for a few months but in the end the woman passes away due to cancer.",
+            "tell me a story of a girl who was raised serving in the military gets discharged from service due to injury and trauma tires to find love but not knowing what love is or any emotion due to being numb serving in the military for so long until one day she meets this guy and they fall in love and she beings to fell emotions again after so long"
+
+
         ]
     }
 }
