@@ -24,7 +24,7 @@ func UploadVideo(isTestMode bool, w http.ResponseWriter, r *http.Request) {
 	// 	http.Error(w, "Username not found in context", http.StatusInternalServerError)
 	// 	return
 	// }
-	username := "user5"
+	username := "user6"
 
 	preference, dbErr := getPreferenceFromDatabase(username)
 	if dbErr != nil {
@@ -184,7 +184,7 @@ func generateTikTokVideo(preference model.Preference, videoCreationInfo model.Vi
 	// specify the path for the used files in the combination
 	outputPath := "./assets/video/output.mp4"
 	combinedPath := "./assets/video/combined.mp4"
-	combinedAudioPath := "./assets/audio/combined-output.wav"
+	combinedAudioPath := "./assets/audio/combined-output.aac"
 	filterFilePath := "filter.txt"
 
 	// combine the two audio files
@@ -219,7 +219,7 @@ func combineAudioFiles(audioPath string, backgroundAudioPath string, outputPath 
 		"-i", backgroundAudioPath,
 		"-filter_complex", "[0:a][1:a]amix=inputs=2:duration=shortest[a]",
 		"-map", "[a]",
-		"-c:a", "pcm_s16le", // Set the audio codec to PCM for WAV format
+		"-c:a", "aac", // Set the audio codec to AAC format
 		"-y", outputPath,
 	)
 
@@ -233,7 +233,14 @@ func combineAudioFiles(audioPath string, backgroundAudioPath string, outputPath 
 }
 
 func combineAudioAndVideo(audioPath string, videoPath string, outputPath string) error {
-	cmd := exec.Command("ffmpeg", "-i", videoPath, "-i", audioPath, "-c:v", "copy", "-c:a", "aac", "-strict", "experimental", "-shortest", "-y", outputPath)
+	cmd := exec.Command(
+		"ffmpeg",
+		"-i", videoPath,
+		"-i", audioPath,
+		"-c:v", "libx264",
+		"-c:a", "aac",
+		"-shortest",
+		"-y", outputPath)
 
 	// Run the command and get the output
 	output, err := cmd.CombinedOutput()
@@ -284,7 +291,7 @@ func getDivideFactor(text string) int32 {
 	textLen := len(text)
 
 	// if multiple words there is no reason to scale
-	if strings.Contains(text, " ")  || textLen < 11 {
+	if strings.Contains(text, " ") || textLen < 11 {
 		return 6
 	} else if textLen < 13 {
 		return 7
