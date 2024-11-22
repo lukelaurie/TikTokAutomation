@@ -1,0 +1,4 @@
+hold the functionality for files such as login, logout, get username info. 
+You can then wrap the app in the context and call the functions anytime 
+and this will hold the data. Then can grab username whenever without having 
+to pass it through.

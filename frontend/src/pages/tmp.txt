@@ -1,0 +1,2 @@
+index.js 
+all components unique to only this page

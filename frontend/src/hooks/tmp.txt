@@ -1,0 +1,3 @@
+these will export reusble functions. Can toggle state in a bar, call useContext for 
+authentication, fetch data from an api. 
+These are only stuff that use react functions like useToggle, useAuth, fetch ect. NOT generic logic

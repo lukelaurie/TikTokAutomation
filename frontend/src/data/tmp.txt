@@ -1,0 +1,1 @@
+stores the josn files, constant variables, ect.
